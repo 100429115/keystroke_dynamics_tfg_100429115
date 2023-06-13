@@ -1,0 +1,153 @@
+# This file contains a draw of the testing made to obtain the classifier parameters of each dataset
+
+# Each test takes into account a series of possible values in order to identify the most
+accurate parameters for each classifier and dataset.
+
+In fact, at the end, each execution test includes not just the best but some of the most relevant values
+
+---------------------------------------------------------------------------------------------------
+
+- PCA components:
+
+dataset dns_2009:
+
+12- 86.832195
+17- 96.997571
+19- 98.119058
+20- 99.147203
+
+dataset greyc_nyslab-sheet1:
+
+4- 54.504754
+10-80.345568
+15-96.608556
+17-99.505268
+
+dataset mobekey_dataframe1:
+25-59.794372
+100-98.509012
+103-99.545030
+
+code:
+
+PCA = PCA(n_components=x)
+components = PCA.fit_transform(ss.fit_transform(data))
+
+cumVar = pd.DataFrame(np.cumsum(PCA.explained_variance_ratio_)*100,
+                      columns=["cumVarPerc"])
+
+expVar = pd.DataFrame(PCA.explained_variance_ratio_*100, columns=["VarPerc"])
+pd.concat([expVar, cumVar], axis=1)\
+    .rename(index={0: "PC1", 1: "PC2"})
+
+print(cumVar)
+
+--------------------------------------------------------------------------------------------
+
+- Cross validation Grid search
+
+
+* RandomForest parameters
+
+dataset dns_2009:
+{'criterion': 'entropy', 'max_depth': 15, 'max_features': 7, 'n_estimators': 200} : 0.9332720588235294 accuracy
+
+dataset greyc_nyslab-sheet1:
+{'criterion': 'entropy', 'max_depth': 15, 'max_features': 5, 'n_estimators': 200} : 0.6335227272727274 accuracy
+
+dataset mobekey_dataframe1:
+{'criterion': 'gini', 'max_depth': 20, 'max_features': 5, 'n_estimators': 200} : 0.9068780650837931 accuracy
+
+
+code:
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.2)
+
+param_grid = {'n_estimators': [150, 200, 250],
+              'max_features': [5, 7, 9],
+              'max_depth': [None, 3, 10, 15, 20],
+              'criterion': ['gini', 'entropy']
+             }
+
+grid = GridSearchCV(
+        estimator=RandomForestClassifier(),
+        param_grid=param_grid,
+        scoring='accuracy',
+        n_jobs=-1,
+        cv=5,
+        verbose=0,
+        return_train_score=True
+       )
+
+grid.fit(X=X_train, y=Y_train)
+print(grid.best_params_, ":", grid.best_score_, grid.scoring)
+
+
+* SVC parameters
+
+dataset dns_2009:
+{'C': 88.58667904100814, 'gamma': 'scale', 'kernel': 'rbf'} : 0.8634191176470588 accuracy
+
+dataset greyc_nyslab-hoja1:
+{'C': 46.41588833612782, 'gamma': 'scale', 'kernel': 'rbf'} : 0.47272727272727266 accuracy
+
+dataset mobekey_dataframe1:
+{'C': 46.41588833612773, 'gamma': 'scale', 'kernel': 'rbf'} : 0.3931990096241073 accuracy
+{'kernel': 'rbf', 'gamma': 'scale', 'C': 10.0} : 0.3913512628656786 accuracy
+
+
+code:
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.2)
+
+param_grid = {'C': np.logspace(-5, 10, 10),
+              'gamma': [1.0, 100.0, "scale", "auto"],
+              'kernel': ["linear", "rbf", "sigmoid"]
+             }
+
+grid = GridSearchCV(estimator=SVC(),
+                    param_grid=param_grid,
+                    scoring='accuracy',
+                    n_jobs=-1,
+                    cv=5,
+                    verbose=0,
+                    return_train_score=True
+        )
+
+grid.fit(X=X_train, y=Y_train)
+print(grid.best_params_, ":", grid.best_score_, grid.scoring)
+
+
+* Neural Network hiperparámetros
+
+dataset dns_2009:
+
+dataset greyc_nyslab-hoja1:
+MLPClassifier(alpha=2.154434690031882, hidden_layer_sizes=500, max_iter=5000)
+
+dataset mobekey_dataframe1:
+MLPClassifier(alpha=0.1, hidden_layer_sizes=(200, 200), max_iter=4000)
+MLPClassifier(alpha=2.154434690031882, hidden_layer_sizes=(1000, 1000), max_iter=4000)
+
+
+code:
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.2)
+
+param_distributions = {'hidden_layer_sizes': [(0), (200), (70, 70, 70)],
+                      'alpha': np.logspace(-3, 3, 10),
+                       }
+
+grid = RandomizedSearchCV(
+        estimator=MLPClassifier(solver='adam', max_iter=5000),
+        param_distributions=param_distributions,
+        n_iter=40,
+        scoring="accuracy",
+        n_jobs=-1,
+        cv=5,
+        verbose=0,
+        return_train_score=True
+       )
+
+grid.fit(X=X_train, y=Y_train)
+print(grid.best_params_, ":", grid.best_score_, grid.scoring)
+modelo=grid.best_estimator_
+print(modelo)
+print(modelo.learning_rate_init)
